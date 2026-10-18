@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Marriage Table</title>
+  <meta name="theme-color" content="#111111">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Marriage Table">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme = param === "dark" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+  <script src="pwa.js" defer></script>
+</head>
+
+<body>
+  <main id="home-screen">
+  <header class="round-header welcome-hero">
+    <div class="card-fan" aria-hidden="true">
+      <div class="playing-card card-left card-black">
+        <span class="card-corner">A<br>♠</span>
+        <svg class="ace-art" viewBox="0 0 80 100" focusable="false">
+          <path d="M40 8C32 23 7 36 7 55c0 18 22 25 32 8-1 14-7 22-15 28h32c-8-6-14-14-15-28 10 17 32 10 32-8C73 36 48 23 40 8Z"/>
+          <path class="ace-inlay" d="M40 30 30 49l10 17 10-17Z"/>
+        </svg>
+        <span class="card-corner card-corner-bottom">A<br>♠</span>
+      </div>
+      <div class="playing-card card-middle">
+        <span class="card-corner">K<br>♥</span>
+        <svg class="court-art" viewBox="0 0 100 180" focusable="false">
+          <rect class="court-paper" x="2" y="2" width="96" height="176" rx="3"/>
+          <defs>
+            <g id="king-half">
+              <path class="court-dark" d="M14 89V66l25-12h23l25 12v23Z"/>
+              <path class="court-red" d="m17 68 17-9 33 30H41ZM61 57l21 11-4 21H67Z"/>
+              <path class="court-paper" d="M37 28h28v21L53 64 39 52Z"/>
+              <path class="court-dark" d="m37 34-5 10 6 4V31Zm25-3 8 11-6 8Z"/>
+              <path class="court-dark" d="m39 45 8 4 7-3 10 1-4 13-7 8-13-13Z"/>
+              <path class="court-paper" d="m45 49 7 3 6-3"/>
+              <path class="court-red" d="m33 12 11 9 8-14 9 14 11-9-5 18H37Z"/>
+              <path class="court-ink" d="M37 30h30M43 37h5m9 0h4m-8 0-2 7h4"/>
+              <path class="court-paper" d="m37 59 9 9-8 8-10-10Z"/>
+              <path class="court-red" d="m37 64 4 4-4 4-4-4Z"/>
+              <path class="court-paper" d="m9 18 5-8 5 8-2 46h-6Z"/>
+              <path class="court-ink" d="M14 19v43M5 64h18"/>
+              <path class="court-red" d="M11 66h6v18h-6Z"/>
+              <path class="court-ink" d="m71 64 7 5-4 14m-6-20 7 6-4 12"/>
+            </g>
+          </defs>
+          <use href="#king-half"/>
+          <use href="#king-half" transform="rotate(180 50 90)"/>
+          <path class="court-ink" d="M3 90h94"/>
+        </svg>
+        <span class="card-corner card-corner-bottom">K<br>♥</span>
+      </div>
+      <div class="playing-card card-right">
+        <span class="card-corner">Q<br>♦</span>
+        <svg class="court-art" viewBox="0 0 100 180" focusable="false">
+          <rect class="court-paper" x="2" y="2" width="96" height="176" rx="3"/>
+          <defs>
+            <g id="queen-half">
+              <path class="court-dark" d="M25 59V31c0-24 46-24 46 0v31Z"/>
+              <path class="court-red" d="M11 89V68l28-16h21l29 16v21Z"/>
+              <path class="court-paper" d="M37 28h26v19L51 60 38 48Z"/>
+              <path class="court-red" d="m31 12 12 9 8-13 10 13 10-9-6 17H36Z"/>
+              <path class="court-ink" d="M37 30h26m-21 7h5m8 0h4m-8 0-2 6h4m-8 5h10"/>
+              <path class="court-paper" d="m29 59 20 17 20-17 6 7-26 21-26-21Z"/>
+              <path class="court-dark" d="m44 71 6-6 6 6-6 6Z"/>
+              <path class="court-ink" d="M80 43v40m0-17-9-9m9-4 9-7"/>
+              <path class="court-paper" d="M78 34c-9-12-18 4-7 8-10 8 6 16 10 6 8 9 18-6 8-10 7-10-9-15-11-4Z"/>
+              <circle class="court-red" cx="80" cy="40" r="4"/>
+              <path class="court-dark" d="m15 71 6-5 13 22H24Z"/>
+              <path class="court-ink" d="m64 80 8-6 10 2m-65 3 5 6"/>
+            </g>
+          </defs>
+          <use href="#queen-half"/>
+          <use href="#queen-half" transform="rotate(180 50 90)"/>
+          <path class="court-ink" d="M3 90h94"/>
+        </svg>
+        <span class="card-corner card-corner-bottom">Q<br>♦</span>
+      </div>
+    </div>
+    <p class="table-eyebrow">A seat for everyone</p>
+    <h1 id="welcome-heading" tabindex="-1">Marriage Table</h1>
+    <p>Your cards. Your friends. Your house rules.</p>
+    <div class="suit-divider" aria-hidden="true">
+      <span>♠</span><span>♥</span><span>♣</span><span>♦</span>
+    </div>
+  </header>
+
+  <section id="continue-card" class="results-panel" hidden>
+    <h2>Welcome back</h2>
+    <p id="continue-description"></p>
+
+    <button id="continue-session-button"
+      type="button" class="primary wide">
+      Continue Session →
+    </button>
+  </section>
+
+  <button id="new-session-button"
+    type="button" class="primary wide home-action">
+    <span class="action-symbol" aria-hidden="true">＋</span>
+    <span class="action-copy">
+      <span class="action-title">New Session</span>
+      <span class="action-description">Choose your rules and bring everyone to the table.</span>
+    </span>
+    <span class="action-arrow" aria-hidden="true">→</span>
+  </button>
+
+  <button id="previous-sessions-button"
+    type="button" class="wide home-action">
+    <span class="action-symbol" aria-hidden="true">↶</span>
+    <span class="action-copy">
+      <span class="action-title">Previous Sessions</span>
+      <span class="action-description">Pick up where your table left off.</span>
+    </span>
+    <span class="action-arrow" aria-hidden="true">→</span>
+  </button>
+
+  <section id="previous-sessions-panel"
+    class="results-panel" hidden>
+    <h2 id="previous-sessions-heading" tabindex="-1">
+      Previous Sessions
+    </h2>
+
+    <div id="previous-sessions-list"></div>
+  </section>
+
+  <button id="export-sessions-button"
+    type="button" class="wide home-action">
+    <span class="action-symbol" aria-hidden="true">↓</span>
+    <span class="action-copy">
+      <span class="action-title">Export Session Backup</span>
+      <span class="action-description">Keep a separate copy of your saved games.</span>
+    </span>
+    <span class="action-arrow" aria-hidden="true">→</span>
+  </button>
+
+  <p class="muted">
+    Sessions are saved in this browser on this device.
+    They do not automatically sync to another phone.
+  </p>
+
+  <section class="install-panel" aria-labelledby="install-title">
+    <h2 id="install-title">Take your table with you</h2>
+    <p class="muted">Install on your Home Screen. No app store required.</p>
+    <button id="install-app-button" type="button" class="primary wide" hidden>Install Marriage Table</button>
+    <details>
+      <summary>How to install on your phone</summary>
+      <p><strong>iPhone:</strong> Open the live HTTPS link in Safari, tap Share,
+        then Add to Home Screen. Turn on Open as Web App if shown.</p>
+      <p><strong>Android:</strong> Open the live link in Chrome and use Install
+        Marriage Table, or the browser menu’s Install app / Add to Home screen.</p>
+      <p class="muted">Open online once and wait for the offline-ready message.
+        Home Screen installation may use separate browser storage.
+        Export a session backup before switching; sessions are not synced between devices.</p>
+    </details>
+    <p id="pwa-status" class="muted" role="status" aria-live="polite"></p>
+    <button id="update-app-button" type="button" class="wide" hidden>Save &amp; load update</button>
+  </section>
+  <p class="muted">Play Marriage — coming later.</p>
+</main>
+
+<p id="storage-status" class="message"
+  role="status" aria-live="polite"></p>
+
+  <main id="rules-screen" hidden>
+  <button id="rules-home-button" type="button">← Home</button>
+
+    <header class="setup-hero">
+      <div>
+        <p class="table-eyebrow">Make it your table</p>
+        <h1 id="home-heading" tabindex="-1">Marriage Table</h1>
+        <p class="muted">Agree the rules. Then deal the fun.</p>
+      </div>
+      <div class="mini-deck" aria-hidden="true">
+        <span class="mini-card mini-card-back">♠</span>
+        <span class="mini-card mini-card-front">♥</span>
+      </div>
+    </header>
+
+    <form id="rules-form">
+      <h2>Game Rules &amp; Rates</h2>
+      <p class="muted">These are editable starting values.</p>
+
+      <label for="seen-points">Seen game points</label>
+      <input id="seen-points" type="number"
+        min="0" max="100000" step="1" value="3" required>
+
+      <label for="unseen-points">Unseen game points</label>
+      <input id="unseen-points" type="number"
+        min="0" max="100000" step="1" value="10" required>
+
+      <label for="dublee-points">Dublee finish bonus — added to winner's Maal</label>
+      <input id="dublee-points" type="number"
+        min="0" max="100000" step="1" value="5" required>
+
+      <label for="foul-points">Foul penalty points</label>
+      <input id="foul-points" type="number"
+        min="0" max="100000" step="1" placeholder="For example, 10">
+
+      <h2>Rate &amp; Currency</h2>
+
+      <label for="point-rate">Amount per point</label>
+      <input id="point-rate" type="number"
+        min="0" max="100000" step="0.01"
+        placeholder="Leave blank for points only">
+
+      <label for="currency">Currency</label>
+      <select id="currency">
+        <option value="NPR">NPR — Nepalese rupee</option>
+        <option value="AUD">AUD — Australian dollar</option>
+        <option value="INR">INR — Indian rupee</option>
+        <option value="USD">USD — US dollar</option>
+        <option value="GBP">GBP — British pound</option>
+        <option value="EUR">EUR — euro</option>
+      </select>
+
+      <section class="rules-panel">
+        <h2>Your house rules</h2>
+        <ul>
+          <li>
+            Seen opponents pay the configured Seen points.
+            Unseen opponents pay the configured Unseen points.
+          </li>
+          <li>
+            A player who viewed the joker through Dublee pays
+            no winning points. Maal settlement still applies.
+          </li>
+          <li>
+            A Dublee finisher receives the configured bonus (default 5)
+            in their Maal before settlement. Enter only their original
+            Maal; the calculator adds the bonus once.
+          </li>
+          <li>
+            A foul player pays Maal settlement, but no winning points.
+            The separate foul penalty goes to the following round’s winner.
+            If the offender wins that round, their own penalty cancels out.
+          </li>
+          <li>Players on Hold do not participate in that round.</li>
+        </ul>
+        <p class="muted">
+          Dublee bonuses and previous-round foul adjustments are automatic.
+          Foul points are captured under the originating round’s rules and
+          converted using the receiving round’s rate. Final settlement waits
+          if the last round has an unresolved foul.
+        </p>
+      </section>
+
+      <p id="rules-error" class="message" role="alert"></p>
+
+      <button type="submit" class="primary wide">Start →</button>
+    </form>
+  </main>
+
+  <main id="players-screen" hidden>
+    <button id="players-home-button" type="button">← Home</button>
+
+    <header class="setup-hero">
+      <div>
+        <p class="table-eyebrow">Bring your people</p>
+        <h1 id="players-heading" tabindex="-1">Session &amp; Players</h1>
+        <p class="muted">Familiar faces. A fresh round.</p>
+      </div>
+      <div class="mini-deck" aria-hidden="true">
+        <span class="mini-card mini-card-back">♣</span>
+        <span class="mini-card mini-card-front">♦</span>
+      </div>
+    </header>
+
+    <label for="session-name">Group / session name</label>
+    <input id="session-name" type="text" maxlength="60"
+      placeholder="Friday Marriage Night">
+
+    <h2>Player names</h2>
+    <p class="muted">
+      Only named players are added to the draft round.
+      Previous round scores remain in history.
+    </p>
+
+    <div id="player-list"></div>
+
+    <button id="add-player-button" type="button" class="wide">
+      + Add player
+    </button>
+
+    <p id="player-count" class="muted" aria-live="polite"></p>
+    <p id="players-error" class="message" role="alert"></p>
+
+    <button id="start-round-button" type="button" class="primary wide">
+      Start Round 1 →
+    </button>
+  </main>
+
+  <main id="round-screen" hidden>
+    <nav class="toolbar" aria-label="Round navigation">
+      <button id="round-home-button" type="button">← Home</button>
+      <button id="open-score-button" type="button">Score</button>
+      <button id="cancel-edit-button" type="button" hidden>
+        Cancel edit
+      </button>
+    </nav>
+
+    <header class="round-header">
+      <h1 id="round-heading" tabindex="-1">Round 1</h1>
+      <p class="muted">Enter Maal, choose status and select one winner.</p>
+      <p id="round-session-name"></p>
+    </header>
+
+    <div class="round-settings">
+  <div>
+    <label id="round-rate-label">Rate</label>
+    <div
+      id="round-rate"
+      class="rate-display"
+      aria-labelledby="round-rate-label"
+    ></div>
+  </div>
+
+  <div>
+    <label for="round-winner-select">Winner</label>
+    <select id="round-winner-select"></select>
+  </div>
+</div>
+
+
+    <p id="edit-notice" class="muted" hidden>
+      Editing a saved round uses that round’s original rate and rules.
+      Later foul adjustments and session totals are recalculated if affected.
+    </p>
+
+   
+
+    <p id="round-message" class="message" role="alert"></p>
+    <p id="round-foul-note" class="message" aria-live="polite"></p>
+
+    <div class="table-wrap">
+      <table class="round-table">
+        <caption id="entry-caption">Round 1 player entries</caption>
+        <thead>
+          <tr>
+            <th scope="col">Winner</th>
+            <th scope="col">Player</th>
+            <th scope="col">Maal</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody id="round-player-list"></tbody>
+      </table>
+    </div>
+
+    <p class="muted">
+      Maal starts at 0. Positive Maal changes Unseen to Seen.
+      Dublee means joker viewed. Hold means not playing.
+    </p>
+<button id="calculate-button" type="button" class="primary wide">
+  Calculate with total Maal (0)
+</button>
+<p id="dublee-bonus-note" class="muted" aria-live="polite"></p>
+<p class="muted">
+  Calculating saves this round’s result.
+  Recalculating replaces it without adding another round.
+</p>
+
+
+    <button id="edit-players-button" type="button" class="wide">
+      ← Edit players
+    </button>
+  </main>
+
+  <main id="results-screen" hidden>
+    <nav class="toolbar" aria-label="Results navigation">
+      <button id="results-home-button" type="button">← Home</button>
+      <button id="resume-round-button" type="button">Round entry</button>
+    </nav>
+
+    <header class="round-header">
+      <h1 id="results-heading" tabindex="-1">Round Summary</h1>
+      <p id="results-meta"></p>
+      <p class="muted">Positive = receives · Negative = pays</p>
+    </header>
+
+    <section class="results-panel" aria-labelledby="current-title">
+      <div class="section-heading">
+        <h2 id="current-title">Current round</h2>
+        <button id="edit-current-button" type="button">Edit this round</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="current-summary-table" class="summary-table">
+          <caption id="current-caption">Round breakdown</caption>
+          <thead id="current-summary-head"></thead>
+          <tbody id="current-summary-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="results-panel history-panel"
+      aria-labelledby="history-title">
+      <h2 id="history-title">All Rounds</h2>
+      <p class="muted">
+        Every saved round is included once.
+        Amounts use each round’s saved rate.
+      </p>
+
+      <div class="table-wrap">
+        <table id="history-table" class="summary-table">
+          <caption>Session scores and totals</caption>
+          <thead id="history-head"></thead>
+          <tbody id="history-body"></tbody>
+          <tfoot id="history-foot"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <p id="results-message" class="message" role="alert"></p>
+
+    <div class="results-actions">
+      <button id="settle-button" type="button">Settle Money</button>
+      <button id="edit-previous-button" type="button">Edit Previous</button>
+      <button id="next-game-button" type="button" class="primary">
+        Next Game →
+      </button>
+    </div>
+  </main>
+
+  <dialog id="edit-dialog" aria-labelledby="edit-dialog-title">
+    <h2 id="edit-dialog-title">Edit a previous round</h2>
+
+    <label for="edit-round-select">Choose round</label>
+    <select id="edit-round-select"></select>
+
+    <p class="muted">
+      Recalculating replaces that round’s result, not its round number.
+      Your current draft will be kept while you edit.
+    </p>
+
+    <button id="confirm-edit-button" type="button" class="primary wide">
+      Open round
+    </button>
+    <button id="close-edit-button" type="button" class="wide">Cancel</button>
+  </dialog>
+
+  <dialog id="settlement-dialog" aria-labelledby="settlement-title">
+    <h2 id="settlement-title">Settlement instructions</h2>
+
+    <p class="muted">
+      Based on saved rounds only. Assumes no payments have been made.
+      This version does not record or send payments.
+    </p>
+
+    <div id="settlement-content"></div>
+
+    <button id="close-settlement-button" type="button" class="primary wide">
+      Close
+    </button>
+  </dialog>
+
+  <footer>
+    Marriage Table · Pilot v0.1.0 · Scores are saved on this device when storage
+    is available. Export backups regularly; clearing browser data can remove sessions.
+  </footer>
+</body>
+</html>
