@@ -1221,17 +1221,9 @@ $("rules-form").addEventListener("submit", (event) => {
   });
 });
 
-$("players-home-button").addEventListener("click", () => {
-  showScreen("rules-screen", "home-heading");
-});
-
-$("round-home-button").addEventListener("click", () => {
-  showScreen("rules-screen", "home-heading");
-});
-
-$("results-home-button").addEventListener("click", () => {
-  showScreen("rules-screen", "home-heading");
-});
+$("players-home-button").addEventListener("click", goHome);
+$("round-home-button").addEventListener("click", goHome);
+$("results-home-button").addEventListener("click", goHome);
 
 $("add-player-button").addEventListener("click", () => addPlayer());
 
@@ -1513,6 +1505,19 @@ function renderHome() {
   sessions.forEach((session) => {
     const card = element("article", "", "session-card");
     const title = element("h3", sessionName(session.state));
+    const heading = element("div", "", "session-card-heading");
+    const remove = element("button", "", "delete-session-button");
+    remove.type = "button";
+    remove.setAttribute("aria-label", `Delete session: ${sessionName(session.state)}`);
+    remove.title = `Delete session: ${sessionName(session.state)}`;
+    remove.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+        aria-hidden="true" focusable="false">
+        <path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>
+      </svg>`;
+    remove.addEventListener("click", () => requestSessionDeletion(session.id));
+    heading.append(title, remove);
     const description = element(
       "p",
       sessionDescription(session),
@@ -1528,10 +1533,102 @@ function renderHome() {
       continueSession(session.id);
     });
 
-    card.append(title, description, open);
+    card.append(heading, description, open);
     $("previous-sessions-list").append(card);
   });
 }
+
+let pendingSessionDeletion = null;
+
+function requestSessionDeletion(id) {
+  if (!saveActiveSession() || !storageWritable) {
+    showStorageStatus("Deletion is paused because browser saving is unavailable. Export your work and resolve the storage warning first.", true);
+    return;
+  }
+  const session = sessionLibrary.sessions.find((item) => item.id === id);
+  if (!session) {
+    showStorageStatus("That session no longer exists. Reopen Previous Sessions.", true);
+    return;
+  }
+  pendingSessionDeletion = { id, snapshot: JSON.stringify(session) };
+  const pendingFouls = session.state.savedRounds.at(-1)?.pendingFouls || [];
+  $("delete-session-description").textContent =
+    `"${sessionName(session.state)}" — ${session.state.savedRounds.length} completed rounds.` +
+    (id === currentSessionId ? " This is your currently open session." : "") +
+    (pendingFouls.length ? " It also contains unresolved foul points." : "");
+  $("delete-session-error").textContent = "";
+  $("delete-session-dialog").showModal();
+  $("cancel-delete-session-button").focus();
+}
+
+function deleteSession(id, snapshot) {
+  if (!storageWritable) throw new InputError("Saving is paused. No session was deleted.");
+  const target = sessionLibrary.sessions.find((item) => item.id === id);
+  if (!target || JSON.stringify(target) !== snapshot) {
+    throw new InputError("This session changed since the confirmation opened. Cancel and review it again.");
+  }
+  const candidate = copy(sessionLibrary);
+  candidate.sessions = candidate.sessions.filter((item) => item.id !== id);
+  if (candidate.activeId === id) {
+    candidate.activeId = [...candidate.sessions]
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.id || null;
+  }
+  const serialized = JSON.stringify(candidate);
+  // Commit first: a storage error must leave both history and the active draft intact.
+  try {
+    if (localStorage.getItem(STORAGE_KEY) !== lastStoredText) {
+      storageWritable = false;
+      showStorageStatus("Another tab changed your sessions. Nothing was deleted. Export any unsaved work before reloading.", true);
+      throw new InputError("Another tab changed the saved data. No session was deleted.");
+    }
+    localStorage.setItem(STORAGE_KEY, serialized);
+  } catch (error) {
+    if (error instanceof InputError) throw error;
+    if (!(error instanceof DOMException)) throw error;
+    throw new InputError(`Deletion could not be saved (${error.name}). No session was deleted.`);
+  }
+  sessionLibrary = candidate;
+  lastStoredText = serialized;
+  if (currentSessionId === id) {
+    // Prevent autosave/page-hide events from resurrecting the deleted session.
+    currentSessionId = null;
+    players.splice(0);
+    savedRounds.splice(0);
+    nextPlayerId = 1;
+    selectedRoundNumber = null;
+    parkedDraft = null;
+    draft = { number: 1, sessionName: "", winnerId: null, rules: null, entries: [] };
+    resumeScreen = "rules-screen";
+    restoreForm(DEFAULT_FORM);
+    $("round-player-list").replaceChildren();
+    ["current-summary-head", "current-summary-body", "history-head", "history-body", "history-foot"]
+      .forEach((field) => $(field).replaceChildren());
+    renderSetup();
+  }
+}
+
+$("cancel-delete-session-button").addEventListener("click", () => {
+  pendingSessionDeletion = null;
+  $("delete-session-dialog").close();
+});
+$("delete-session-dialog").addEventListener("cancel", () => {
+  pendingSessionDeletion = null;
+});
+$("confirm-delete-session-button").addEventListener("click", () => {
+  $("delete-session-error").textContent = "";
+  try {
+    if (!pendingSessionDeletion) throw new InputError("Choose a session to delete first.");
+    deleteSession(pendingSessionDeletion.id, pendingSessionDeletion.snapshot);
+    pendingSessionDeletion = null;
+    $("delete-session-dialog").close();
+    renderHome();
+    $("previous-sessions-heading").focus();
+    showStorageStatus("Session deleted from this browser. Other sessions and exported backups were not changed.");
+  } catch (error) {
+    if (!(error instanceof InputError)) throw error;
+    $("delete-session-error").textContent = error.message;
+  }
+});
 
 function saveActiveSession() {
   if (restoringSession || currentSessionId === null) {
@@ -1608,10 +1705,12 @@ function validateSessionState(state) {
     requireValid(rules && typeof rules === "object", "missing rules.");
 
     ["seen", "unseen", "dublee"].forEach((key) => {
+      requireValid(typeof rules[key] === "number", `invalid ${key} points.`);
       wholeNumber(rules[key], `${key} points`);
     });
 
     if (rules.foul !== null) {
+      requireValid(typeof rules.foul === "number", "invalid foul points.");
       wholeNumber(rules.foul, "foul points");
     }
 
@@ -1749,6 +1848,7 @@ function validateSessionState(state) {
 
   state.savedRounds.forEach((round, index) => {
     validDraft(round);
+    requireValid(round.rules !== null, "saved round has no rules.");
 
     requireValid(
       round.number === index + 1,
@@ -2077,6 +2177,329 @@ $("export-sessions-button").addEventListener("click", () => {
     "marriage-table-sessions.json",
     "application/json"
   );
+});
+
+// Imports add validated copies. They never replace an existing session.
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+const MAX_IMPORT_SESSIONS = 100;
+const MAX_IMPORT_ROUNDS = 1000;
+let pendingImport = null;
+let importReadNumber = 0;
+
+function importCheck(condition, message) {
+  if (!condition) throw new InputError(message);
+}
+
+function importText(value, limit, label) {
+  importCheck(
+    typeof value === "string" && value.length <= limit,
+    `Invalid ${label} in backup.`
+  );
+  return value;
+}
+
+function importedRules(value) {
+  if (value === null) return null;
+  importCheck(
+    value && typeof value === "object" && !Array.isArray(value),
+    "Invalid rules in backup."
+  );
+  ["seen", "unseen", "dublee"].forEach((key) => {
+    importCheck(Number.isSafeInteger(value[key]), `Invalid ${key} rule.`);
+    wholeNumber(value[key], key);
+  });
+  if (value.foul !== null) {
+    importCheck(Number.isSafeInteger(value.foul), "Invalid foul rule.");
+    wholeNumber(value.foul, "Foul penalty");
+  }
+  importCheck(
+    ["NPR", "AUD", "INR", "USD", "GBP", "EUR"].includes(value.currency),
+    "Unsupported backup currency."
+  );
+  importCheck(
+    value.rateMinor === null ||
+    (Number.isSafeInteger(value.rateMinor) && value.rateMinor >= 0 &&
+      value.rateMinor <= LIMIT * 100),
+    "Invalid backup rate."
+  );
+  return {
+    seen: value.seen, unseen: value.unseen, dublee: value.dublee,
+    foul: value.foul, currency: value.currency, rateMinor: value.rateMinor
+  };
+}
+
+function importedDraft(value) {
+  importCheck(
+    value && typeof value === "object" && !Array.isArray(value) &&
+    Number.isSafeInteger(value.number) && value.number >= 1 &&
+    value.number <= MAX_IMPORT_ROUNDS + 1 &&
+    Array.isArray(value.entries) && value.entries.length <= MAX_PLAYERS,
+    "Invalid round or draft in backup."
+  );
+  const ids = new Set();
+  const entries = value.entries.map((entry) => {
+    importCheck(entry && typeof entry === "object", "Invalid player entry.");
+    const id = importText(entry.id, 50, "player ID");
+    importCheck(/^player-[1-9]\d*$/.test(id) && !ids.has(id), "Invalid or duplicate player ID.");
+    ids.add(id);
+    importCheck(
+      (typeof entry.maal === "string" && entry.maal.length <= 64) ||
+      (typeof entry.maal === "number" && Number.isFinite(entry.maal)),
+      "Invalid Maal entry."
+    );
+    importCheck(
+      ["Unseen", "Seen", "Dublee", "Foul", "Hold"].includes(entry.status) &&
+      typeof entry.seen === "boolean" && typeof entry.badInput === "boolean",
+      "Invalid player status."
+    );
+    importCheck(
+      !(entry.status === "Unseen" && entry.seen) &&
+      !(["Seen", "Dublee"].includes(entry.status) && !entry.seen),
+      "Seen/Unseen information contradicts the player status."
+    );
+    return {
+      id, name: importText(entry.name, 40, "player name"),
+      maal: entry.maal, status: entry.status,
+      seen: entry.seen, badInput: entry.badInput
+    };
+  });
+  importCheck(
+    value.winnerId === null || ids.has(value.winnerId),
+    "The backup winner is not in the round."
+  );
+  return {
+    number: value.number,
+    sessionName: importText(value.sessionName, 200, "session name"),
+    winnerId: value.winnerId,
+    rules: importedRules(value.rules),
+    entries
+  };
+}
+
+function importedState(value) {
+  importCheck(
+    value && typeof value === "object" &&
+    Array.isArray(value.players) && value.players.length <= MAX_PLAYERS &&
+    Array.isArray(value.savedRounds) && value.savedRounds.length <= MAX_IMPORT_ROUNDS &&
+    value.form && typeof value.form === "object",
+    `Invalid session, or more than ${MAX_IMPORT_ROUNDS} rounds in one session.`
+  );
+  const setup = value.players.map((player) => {
+    importCheck(player && typeof player === "object", "Invalid setup player.");
+    return {
+      id: importText(player.id, 50, "player ID"),
+      name: importText(player.name, 40, "player name")
+    };
+  });
+  const form = Object.fromEntries(FORM_FIELDS.map((id) => [
+    id, importText(value.form[id], id === "session-name" ? 60 : 64, id)
+  ]));
+  importCheck(
+    ["NPR", "AUD", "INR", "USD", "GBP", "EUR"].includes(form.currency),
+    "Invalid selected currency."
+  );
+  const rounds = value.savedRounds.map(importedDraft);
+  rounds.forEach((round) => {
+    const names = round.entries.map((entry) => entry.name.trim().toLowerCase());
+    importCheck(
+      names.every(Boolean) && new Set(names).size === names.length,
+      "Saved rounds need distinct nonempty player names."
+    );
+  });
+  // Copy only known fields; supplied result totals and extra properties are ignored.
+  return validateSessionState({
+    players: setup,
+    savedRounds: rounds,
+    nextPlayerId: value.nextPlayerId,
+    selectedRoundNumber: value.selectedRoundNumber,
+    parkedDraft: value.parkedDraft === null ? null : importedDraft(value.parkedDraft),
+    draft: importedDraft(value.draft),
+    form,
+    screen: value.screen
+  });
+}
+
+function parseSessionBackup(text) {
+  importCheck(new Blob([text]).size <= MAX_IMPORT_BYTES, "Backup is larger than 2 MB.");
+  let data;
+  try {
+    data = JSON.parse(text.replace(/^\uFEFF/, ""));
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    throw new InputError("This file is not valid JSON. Choose an exported session backup.");
+  }
+  if (data?.recoveryExport) {
+    throw new InputError(
+      "This is a recovery export containing unreadable data, not a normal session backup. " +
+      "Keep the file; it needs separate recovery review."
+    );
+  }
+  importCheck(
+    data && data.version === 1 && Array.isArray(data.sessions),
+    "Unsupported file. Choose a version 1 Marriage Table session backup."
+  );
+  importCheck(
+    data.sessions.length > 0 && data.sessions.length <= MAX_IMPORT_SESSIONS,
+    `Choose a backup containing 1-${MAX_IMPORT_SESSIONS} sessions.`
+  );
+  let rounds = 0;
+  const ids = new Set();
+  const sessions = data.sessions.map((session) => {
+    importCheck(session && typeof session === "object", "Invalid session record.");
+    const id = importText(session.id, 160, "session ID");
+    importCheck(id.trim() !== "" && !ids.has(id), "Empty or duplicate session ID.");
+    ids.add(id);
+    const updatedAt = importText(session.updatedAt, 40, "save date");
+    importCheck(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(updatedAt) &&
+      !Number.isNaN(Date.parse(updatedAt)) &&
+      new Date(updatedAt).toISOString() === updatedAt,
+      "Invalid session save date."
+    );
+    rounds += Array.isArray(session.state?.savedRounds) ? session.state.savedRounds.length : 0;
+    importCheck(rounds <= 5000, "Backup contains too many rounds (maximum 5,000).");
+    return { id, updatedAt, state: importedState(session.state) };
+  });
+  importCheck(data.activeId === null || ids.has(data.activeId), "Backup refers to a missing active session.");
+  return { version: 1, activeId: data.activeId, sessions };
+}
+
+function planSessionImport(incoming) {
+  // Ignore metadata timestamps and compare normalized content, not names alone.
+  const signatures = new Set(sessionLibrary.sessions.map(
+    (session) => JSON.stringify(importedState(session.state))
+  ));
+  const additions = [];
+  let skipped = 0;
+  incoming.sessions.forEach((session) => {
+    const signature = JSON.stringify(session.state);
+    if (signatures.has(signature)) {
+      skipped += 1;
+    } else {
+      signatures.add(signature);
+      additions.push(session);
+    }
+  });
+  return { additions, skipped };
+}
+
+function dismissImport() {
+  pendingImport = null;
+  $("import-dialog").close();
+  $("import-sessions-file").value = "";
+}
+
+function commitSessionImport(incoming) {
+  importCheck(storageWritable, "Browser saving is paused. Export your work and reload before importing.");
+  const plan = planSessionImport(incoming);
+  const candidate = copy(sessionLibrary);
+  const usedIds = new Set(candidate.sessions.map((session) => session.id));
+  let firstAddedId = null;
+  plan.additions.forEach((session) => {
+    let id = session.id;
+    if (usedIds.has(id)) {
+      do {
+        id = `session-${Date.now()}-${crypto.getRandomValues(new Uint32Array(2)).join("-")}`;
+      } while (usedIds.has(id));
+    }
+    usedIds.add(id);
+    if (firstAddedId === null) firstAddedId = id;
+    candidate.sessions.push({ ...copy(session), id });
+  });
+  if (candidate.activeId === null) candidate.activeId = firstAddedId;
+
+  const serialized = JSON.stringify(candidate);
+  // Write the complete result before changing the visible in-memory library.
+  try {
+    if (localStorage.getItem(STORAGE_KEY) !== lastStoredText) {
+      storageWritable = false;
+      showStorageStatus("Another tab changed your sessions. Import was stopped; export this tab's work before reloading.", true);
+      throw new InputError("Sessions changed in another tab. Nothing was imported.");
+    }
+    if (plan.additions.length) localStorage.setItem(STORAGE_KEY, serialized);
+  } catch (error) {
+    if (error instanceof InputError) throw error;
+    if (!(error instanceof DOMException)) throw error;
+    throw new InputError(
+      `Backup could not be saved (${error.name}). Nothing was imported. ` +
+      "Storage may be full or unavailable; preserve your current backups."
+    );
+  }
+  if (plan.additions.length) {
+    sessionLibrary = candidate;
+    lastStoredText = serialized;
+  }
+  return plan;
+}
+
+$("import-sessions-button").addEventListener("click", () => {
+  if (!saveActiveSession() || !storageWritable) {
+    $("import-status").textContent =
+      "Import is unavailable while saving is paused. Export your work and resolve the storage warning first.";
+    return;
+  }
+  $("import-status").textContent = "";
+  $("import-sessions-file").value = "";
+  $("import-sessions-file").click();
+});
+
+$("import-sessions-file").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const requestNumber = ++importReadNumber;
+  pendingImport = null;
+  $("import-status").textContent = "Reading backup on this device...";
+  try {
+    importCheck(file.size <= MAX_IMPORT_BYTES, "Backup is larger than 2 MB.");
+    const incoming = parseSessionBackup(await file.text());
+    if (requestNumber !== importReadNumber) return;
+    const plan = planSessionImport(incoming);
+    $("import-preview-summary").textContent =
+      `${plan.additions.length} session(s) to add; ${plan.skipped} identical session(s) to skip.`;
+    $("import-preview-list").replaceChildren();
+    plan.additions.forEach((session) => {
+      $("import-preview-list").append(element(
+        "li",
+        `${sessionName(session.state)} — ${session.state.savedRounds.length} completed rounds` +
+        (sessionLibrary.sessions.some((existing) => existing.id === session.id)
+          ? " — different version; will be kept as a separate copy" : "")
+      ));
+    });
+    $("import-error").textContent = "";
+    $("confirm-import-button").disabled = plan.additions.length === 0;
+    pendingImport = incoming;
+    $("import-status").textContent = "Review the backup before confirming. Nothing has been imported yet.";
+    $("import-dialog").showModal();
+  } catch (error) {
+    if (requestNumber !== importReadNumber) return;
+    if (!(error instanceof InputError) && !(error instanceof DOMException)) throw error;
+    $("import-status").textContent = `Import stopped: ${error.message} Existing sessions were not replaced.`;
+  }
+});
+
+$("confirm-import-button").addEventListener("click", () => {
+  $("import-error").textContent = "";
+  try {
+    importCheck(pendingImport !== null, "Choose a backup first.");
+    const result = commitSessionImport(pendingImport);
+    dismissImport();
+    renderHome();
+    $("previous-sessions-panel").hidden = false;
+    $("previous-sessions-heading").focus();
+    $("import-status").textContent =
+      `Imported and saved ${result.additions.length} session(s); skipped ${result.skipped} identical session(s). ` +
+      "Open an imported session below to continue.";
+    showStorageStatus("Backup import saved on this device. Existing sessions were preserved.");
+  } catch (error) {
+    if (!(error instanceof InputError)) throw error;
+    $("import-error").textContent = error.message;
+  }
+});
+
+$("cancel-import-button").addEventListener("click", dismissImport);
+$("import-dialog").addEventListener("cancel", () => {
+  pendingImport = null;
+  $("import-status").textContent = "Import cancelled. No sessions were added.";
 });
 
 // These run after the existing controls update the application state.

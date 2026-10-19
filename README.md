@@ -1,4 +1,3 @@
-
 # Marriage Table
 
 A mobile-friendly scorekeeper for people playing the Nepali Marriage card game with physical cards.
@@ -29,6 +28,8 @@ The app implements a specific, configurable set of house rules. Marriage rules v
 - Home Screen installation support and offline application caching after initial online setup.
 
 Backup import has been added to the local update. If the deployed app shows **Import Session Backup**, it supports reviewed, additive imports: identical session contents are skipped and differing versions are kept separately. Availability on the live site depends on whether that update has been deployed.
+
+The local v0.1.2 update adds a trash button for each previous session without changing the existing layout. Deleting requires confirmation and removes that session's history and draft from this browser only. Other sessions and exported backups are preserved. Export first if you may want to restore a deleted game; there is no in-app undo. This feature appears online only after the update is deployed.
 
 Ten session members is a calculator limit, not a claim that ten players can play the standard three-deck game simultaneously.
 
@@ -185,18 +186,3 @@ Report bugs through this repository's **Issues** tab. Include the steps, expecte
 Use fictional player names and scores in reports. Remove personal information from screenshots and never attach an actual session backup publicly.
 
 This is an independent project and is not affiliated with or endorsed by a card-game publisher.
-
-**Short version for a one-page résumé:**
-
-> Built and deployed Marriage Table, a responsive JavaScript scorekeeper with configurable scoring rules, editable round history, local session persistence and installable web-app support. Managed the project using Git/GitHub and published it through GitHub Pages.
-
-## Make the repository support those claims
-
-Your GitHub README should include:
-1. The live link and a short explanation of the problem.
-2. Screenshots of Home, round entry and the scoreboard using fictional players.
-3. Setup instructions: download the files and open `index.html`; installation/offline features require HTTPS hosting.
-4. Limitations: device-local storage, no automatic synchronisation, and settlement instructions—not payment processing.
-5. An acknowledgement: **“Built as a guided learning project with AI assistance; I customised the interface and house rules and worked through implementation and debugging.”**
-
-**Don’t list backup import as deployed until the latest GitHub update is live.** Avoid claims such as “production-grade,” “used by hundreds” or “built entirely independently” without evidence.[README.md](https://github.com/user-attachments/files/33643575/README.md)

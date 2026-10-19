@@ -129,7 +129,6 @@
     </span>
     <span class="action-arrow" aria-hidden="true">→</span>
   </button>
-
   <section id="previous-sessions-panel"
     class="results-panel" hidden>
     <h2 id="previous-sessions-heading" tabindex="-1">
@@ -149,6 +148,17 @@
     <span class="action-arrow" aria-hidden="true">→</span>
   </button>
 
+  <button id="import-sessions-button"
+    type="button" class="wide home-action">
+    <span class="action-symbol" aria-hidden="true">↑</span>
+    <span class="action-copy">
+      <span class="action-title">Import Session Backup</span>
+      <span class="action-description">Restore games from a JSON backup without replacing existing sessions.</span>
+    </span>
+    <span class="action-arrow" aria-hidden="true">→</span>
+  </button>
+  <input id="import-sessions-file" type="file" accept=".json,application/json" hidden>
+  <p id="import-status" class="message" role="status" aria-live="polite"></p>
   <p class="muted">
     Sessions are saved in this browser on this device.
     They do not automatically sync to another phone.
@@ -469,8 +479,36 @@
     </button>
   </dialog>
 
+  <dialog id="import-dialog" aria-labelledby="import-dialog-title">
+    <h2 id="import-dialog-title">Review backup import</h2>
+    <p id="import-preview-summary"></p>
+    <ul id="import-preview-list" class="import-preview-list"></ul>
+    <p class="muted">
+      Existing sessions and your current draft stay unchanged.
+      Identical session contents are skipped. A different version is added
+      as a separate session, never merged into or written over an existing game.
+      Scores are rebuilt from the saved entries and rules.
+    </p>
+    <p id="import-error" class="message" role="alert"></p>
+    <button id="confirm-import-button" type="button" class="primary wide">Import sessions</button>
+    <button id="cancel-import-button" type="button" class="wide">Cancel</button>
+  </dialog>
+
+  <dialog id="delete-session-dialog" aria-labelledby="delete-session-title">
+    <h2 id="delete-session-title">Delete this session?</h2>
+    <p id="delete-session-description"></p>
+    <p class="muted">This removes the entire session, its saved rounds and unfinished draft
+      from this browser. Other sessions and exported backups stay unchanged.
+      It cannot be undone here; recovery requires an exported backup.</p>
+    <p id="delete-session-error" class="message" role="alert"></p>
+    <div class="dialog-actions">
+      <button id="cancel-delete-session-button" type="button" autofocus>Keep session</button>
+      <button id="confirm-delete-session-button" type="button" class="primary">Delete session</button>
+    </div>
+  </dialog>
+
   <footer>
-    Marriage Table · Pilot v0.1.0 · Scores are saved on this device when storage
+    Marriage Table · Pilot v0.1.2 · Scores are saved on this device when storage
     is available. Export backups regularly; clearing browser data can remove sessions.
   </footer>
 </body>

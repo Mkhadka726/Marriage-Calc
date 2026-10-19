@@ -1074,14 +1074,15 @@ dialog h2 {
   button {
     transition: none;
   }
+}
 
-  .install-panel {
+.install-panel {
     margin-top: 24px;
     padding: 20px;
     border: 1px solid var(--cp-border);
     border-radius: 16px;
     background: var(--cp-surface);
-  }
+}
 
   .install-panel h2 {
     margin-top: 0;
@@ -1090,4 +1091,57 @@ dialog h2 {
   .install-panel details {
     margin-top: 16px;
   }
+
+  .import-preview-list {
+    max-height: 240px;
+    overflow-y: auto;
+    padding-left: 24px;
+  }
+
+.import-preview-list li {
+    margin-bottom: 8px;
+    overflow-wrap: anywhere;
+}
+
+.session-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-card-heading h3 {
+  min-width: 0;
+  margin: 0;
+}
+
+.session-card .delete-session-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  color: var(--cp-accent);
+  background: var(--cp-surface);
+}
+
+.session-card .delete-session-button:hover {
+  background: var(--cp-accent-soft);
+}
+
+.delete-session-button svg {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
 }
