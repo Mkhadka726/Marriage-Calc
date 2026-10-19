@@ -299,6 +299,7 @@
     <p class="muted">
       Only named players are added to the draft round.
       Previous round scores remain in history.
+      Tap a circle to take or choose a player photo.
     </p>
 
     <div id="player-list"></div>
@@ -507,8 +508,30 @@
     </div>
   </dialog>
 
+  <dialog id="player-photo-dialog" aria-labelledby="player-photo-title">
+    <h2 id="player-photo-title">Player photo</h2>
+    <div id="photo-preview" class="photo-preview"></div>
+    <p class="muted">Ask the player first. Keep their face in the centre:
+      the photo is cropped to a square and displayed in a circle.</p>
+    <div class="dialog-actions">
+      <button id="take-player-photo" type="button">Take Photo / Retake</button>
+      <button id="choose-player-photo" type="button">Choose Existing Photo</button>
+    </div>
+    <input id="camera-photo-file" type="file" accept="image/*" capture="environment" hidden>
+    <input id="library-photo-file" type="file" accept="image/*" hidden>
+    <p id="photo-error" class="message" role="alert"></p>
+    <p class="muted">Your phone controls the camera/photo chooser. Pictures are resized
+      and saved on this device, not sent to a photo server. Session backups include
+      these pictures: keep them private. Removing a photo does not change older backups.</p>
+    <div class="dialog-actions">
+      <button id="cancel-player-photo" type="button">Cancel</button>
+      <button id="remove-player-photo" type="button">Remove Photo</button>
+      <button id="save-player-photo" type="button" class="primary" disabled>Use Photo</button>
+    </div>
+  </dialog>
+
   <footer>
-    Marriage Table · Pilot v0.1.2 · Scores are saved on this device when storage
+    Marriage Table · Pilot v0.1.3 · Scores are saved on this device when storage
     is available. Export backups regularly; clearing browser data can remove sessions.
   </footer>
 </body>

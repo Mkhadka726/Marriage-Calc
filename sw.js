@@ -1,7 +1,7 @@
 "use strict";
 
 // Increment VERSION whenever any cached application file changes.
-const VERSION = "0.1.2";
+const VERSION = "0.1.3";
 const PREFIX = `marriage-table:${self.registration.scope}:`;
 const CACHE = `${PREFIX}${VERSION}`;
 const url = (path) => new URL(path, self.registration.scope).href;

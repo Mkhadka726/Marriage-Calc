@@ -16,6 +16,7 @@ The app implements a specific, configurable set of house rules. Marriage rules v
 
 - Five player-name fields by default, expandable to ten session members.
 - Add or remove setup players; only named players enter the round.
+- Optional circular player photos: tap the avatar in setup to take a photo or choose an existing one, preview the centre crop, then save or remove it.
 - Configurable Seen, Unseen, Dublee and foul point values.
 - Optional rate per point and currency selection.
 - A winner dropdown and checkboxes with protection against selecting two winners.
@@ -30,6 +31,8 @@ The app implements a specific, configurable set of house rules. Marriage rules v
 Backup import has been added to the local update. If the deployed app shows **Import Session Backup**, it supports reviewed, additive imports: identical session contents are skipped and differing versions are kept separately. Availability on the live site depends on whether that update has been deployed.
 
 The local v0.1.2 update adds a trash button for each previous session without changing the existing layout. Deleting requires confirmation and removes that session's history and draft from this browser only. Other sessions and exported backups are preserved. Export first if you may want to restore a deleted game; there is no in-app undo. This feature appears online only after the update is deployed.
+
+The local v0.1.3 update adds player photos. The **Take Photo / Retake** button requests the phone's camera through its file chooser; actual camera/chooser behaviour depends on the browser and device. A desktop browser may show a file picker instead. Camera use is initiated only by the user's tap, with a separate **Choose Existing Photo** option. This feature appears online after deployment.
 
 Ten session members is a calculator limit, not a claim that ten players can play the standard three-deck game simultaneously.
 
@@ -108,6 +111,8 @@ At NPR 1 per point, Madan receives NPR 63 and Suman receives NPR 27; each other 
 - Clearing browser/site data, private browsing or device storage eviction can remove sessions.
 - Local files, the hosted website and an installed Home Screen app may use different storage contexts. Do not assume they share history.
 - Exported JSON backups contain player names, scores and session information. Keep them private; **do not commit session backups to GitHub**.
+- Photos are optional: obtain the player's agreement. The app centre-crops and re-encodes the selected picture as a small 128 × 128 JPEG without copying the source file's EXIF metadata. Only that thumbnail is stored, once per player per session, and it is included in session backups. Photos are not sent to a photo server. Replacing or removing one changes its appearance throughout that session, not its scores; older exported backups still contain their old photos.
+- Photo inputs are limited to 15 MB and thumbnails to a small fixed size. Unsupported formats or full browser storage produce an error rather than silently replacing a photo. Backups over the current 2 MB import limit cannot be restored with the importer; adding many photo-bearing sessions can reach that limit or browser storage limits.
 - Hosting providers process normal website requests under their own policies. Device-local scoring is not a claim that visiting a hosted site creates no network traffic.
 
 An imported backup is a separate copy. Later changes are not synchronised with the original device.

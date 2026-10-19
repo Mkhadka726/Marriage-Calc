@@ -8,6 +8,7 @@ const LIMIT = 100000;
 
 const players = [];
 const savedRounds = [];
+let playerPhotos = {};
 
 let nextPlayerId = 1;
 let selectedRoundNumber = null;
@@ -32,6 +33,26 @@ function element(tag, text = "", className = "") {
   node.textContent = text;
   node.className = className;
   return node;
+}
+
+function avatarFor(id, name) {
+  const avatar = element("span", "", "player-avatar");
+  avatar.setAttribute("aria-hidden", "true");
+  const initials = name.trim().split(/\s+/).filter(Boolean)
+    .slice(0, 2).map((word) => Array.from(word)[0]).join("").toUpperCase() || "+";
+  if (playerPhotos[id]) {
+    const image = document.createElement("img");
+    image.src = playerPhotos[id];
+    image.alt = "";
+    image.addEventListener("error", () => {
+      avatar.textContent = initials;
+      showStorageStatus("A saved player photo could not be displayed. Replace or remove it in player setup.", true);
+    }, { once: true });
+    avatar.append(image);
+  } else {
+    avatar.textContent = initials;
+  }
+  return avatar;
 }
 
 function showScreen(id, headingId) {
@@ -179,6 +200,17 @@ function renderSetup() {
     const label = element("label", `Player ${index + 1}`);
     const wrapper = element("div", "", "player-input-wrap");
     const input = element("input", "", "player-input");
+    const photoButton = element("button", "", "player-photo-button");
+    photoButton.type = "button";
+    const photoRow = element("div", "", "player-photo-row");
+    function updatePhotoButton() {
+      const name = player.name.trim() || `Player ${index + 1}`;
+      photoButton.setAttribute("aria-label", `Change photo for ${name}`);
+      photoButton.title = `Take or choose a photo for ${name}`;
+      photoButton.replaceChildren(avatarFor(player.id, player.name));
+    }
+    updatePhotoButton();
+    photoButton.addEventListener("click", () => openPlayerPhoto(player.id));
 
     input.id = player.id;
     input.type = "text";
@@ -211,6 +243,7 @@ function renderSetup() {
       player.name = input.value;
       $("players-error").textContent = "";
       updateRemoveLabel();
+      updatePhotoButton();
       updatePlayerCount();
     });
 
@@ -237,6 +270,9 @@ function renderSetup() {
       }
 
       players.splice(players.indexOf(player), 1);
+      if (!savedRounds.some((round) => round.entries.some((entry) => entry.id === player.id))) {
+        delete playerPhotos[player.id];
+      }
 
       draft.entries = draft.entries.filter(
         (entry) => entry.id !== player.id
@@ -251,7 +287,8 @@ function renderSetup() {
     });
 
     wrapper.append(input, remove);
-    row.append(label, wrapper);
+    photoRow.append(photoButton, wrapper);
+    row.append(label, photoRow);
     $("player-list").append(row);
   });
 
@@ -391,7 +428,10 @@ function renderRound() {
   draft.entries.forEach((entry) => {
     const row = element("tr");
     const winnerCell = element("td");
-    const nameCell = element("th", entry.name);
+    const nameCell = element("th");
+    const identity = element("span", "", "player-identity");
+    identity.append(avatarFor(entry.id, entry.name), element("span", entry.name));
+    nameCell.append(identity);
     const maalCell = element("td");
     const statusCell = element("td");
 
@@ -698,14 +738,21 @@ function recalculateHistory(rounds) {
 
 // TABLE HELPERS
 
-function appendHeadingRow(target, names) {
+function appendHeadingRow(target, names, ids = []) {
   const row = element("tr");
   const first = element("th", "Round / breakdown");
   first.scope = "col";
   row.append(first);
 
-  names.forEach((name) => {
-    const heading = element("th", name);
+  names.forEach((name, index) => {
+    const heading = element("th");
+    if (ids[index]) {
+      const identity = element("span", "", "player-identity");
+      identity.append(avatarFor(ids[index], name), element("span", name));
+      heading.append(identity);
+    } else {
+      heading.textContent = name;
+    }
     heading.scope = "col";
     row.append(heading);
   });
@@ -869,7 +916,8 @@ function renderResults(number) {
     $("current-summary-head"),
     round.results.map((result) =>
       `${result.name}${result.isWinner ? " 👑" : ""}`
-    )
+    ),
+    round.results.map((result) => result.id)
   );
 
   appendDataRow(
@@ -916,7 +964,7 @@ function renderResults(number) {
   $("history-body").replaceChildren();
   $("history-foot").replaceChildren();
 
-  appendHeadingRow($("history-head"), [...names.values()]);
+  appendHeadingRow($("history-head"), [...names.values()], ids);
 
   savedRounds.forEach((saved) => {
   const points = [];
@@ -1365,6 +1413,231 @@ $("round-player-list").addEventListener(
 // SESSION STORAGE
 // This is separate from the scoring formula.
 
+const PHOTO_SIZE = 128;
+const MAX_PHOTO_CHARS = 24000;
+let photoEditor = null;
+let photoReadVersion = 0;
+
+function validatedPhotos(value) {
+  if (value === undefined) return {};
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      Object.keys(value).length > 1000) {
+    throw new InputError("Invalid player photos in the session.");
+  }
+  const clean = {};
+  for (const [id, data] of Object.entries(value)) {
+    if (!/^player-[1-9]\d*$/.test(id) || typeof data !== "string" ||
+        data.length > MAX_PHOTO_CHARS ||
+        !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(data)) {
+      throw new InputError("A player photo is not a supported small JPEG.");
+    }
+    let bytes;
+    try {
+      bytes = atob(data.slice("data:image/jpeg;base64,".length));
+    } catch (error) {
+      if (!(error instanceof DOMException)) throw error;
+      throw new InputError("A player photo has invalid encoding.");
+    }
+    const byte = (index) => bytes.charCodeAt(index);
+    if (byte(0) !== 255 || byte(1) !== 216) {
+      throw new InputError("A player photo is not a JPEG image.");
+    }
+    // Limit decoded dimensions too: a tiny compressed file can describe a huge image.
+    let offset = 2;
+    let dimensionsOK = false;
+    while (offset < bytes.length) {
+      if (byte(offset++) !== 255) break;
+      while (byte(offset) === 255) offset++;
+      const marker = byte(offset++);
+      if ([217, 218].includes(marker)) break;
+      if (marker === 1 || (marker >= 208 && marker <= 215)) continue;
+      const size = byte(offset) * 256 + byte(offset + 1);
+      if (!Number.isInteger(size) || size < 2 || offset + size > bytes.length) break;
+      if ([192, 193, 194].includes(marker)) {
+        const height = byte(offset + 3) * 256 + byte(offset + 4);
+        const width = byte(offset + 5) * 256 + byte(offset + 6);
+        dimensionsOK = width === PHOTO_SIZE && height === PHOTO_SIZE;
+        break;
+      }
+      offset += size;
+    }
+    if (!dimensionsOK) throw new InputError("Player photos must be 128 × 128 JPEG images.");
+    clean[id] = data;
+  }
+  return clean;
+}
+
+function openPlayerPhoto(id) {
+  const player = players.find((item) => item.id === id);
+  if (!player || currentSessionId === null) {
+    showStorageStatus("Open a session and select an existing player first.", true);
+    return;
+  }
+  photoReadVersion++;
+  photoEditor = { id, sessionId: currentSessionId, pending: null, busy: false };
+  $("player-photo-title").textContent = `Photo for ${player.name.trim() || "player"}`;
+  $("photo-preview").replaceChildren(avatarFor(id, player.name));
+  $("photo-error").textContent = "";
+  $("save-player-photo").disabled = true;
+  $("remove-player-photo").disabled = !playerPhotos[id];
+  $("player-photo-dialog").showModal();
+}
+
+function closePlayerPhoto() {
+  const playerId = photoEditor?.id;
+  photoReadVersion++;
+  photoEditor = null;
+  $("camera-photo-file").value = "";
+  $("library-photo-file").value = "";
+  $("photo-preview").replaceChildren();
+  $("player-photo-dialog").close();
+  if (playerId) {
+    $(playerId)?.closest(".player-row")?.querySelector(".player-photo-button")?.focus();
+  }
+}
+
+async function resizePlayerPhoto(file) {
+  if (file.size > 15 * 1024 * 1024) {
+    throw new InputError("Choose a photo smaller than 15 MB.");
+  }
+  if (!["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(file.type)) {
+    throw new InputError("Choose a JPEG, PNG or WebP photo, or take a new picture.");
+  }
+  const objectUrl = URL.createObjectURL(file);
+  const image = new Image();
+  try {
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new InputError(
+        "This browser could not open that image. Try taking a new photo or choosing a JPEG/PNG."
+      ));
+      image.src = objectUrl;
+    });
+    if (!image.naturalWidth || !image.naturalHeight ||
+        image.naturalWidth * image.naturalHeight > 50000000) {
+      throw new InputError("That image is too large. Choose a smaller photo.");
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = PHOTO_SIZE;
+    canvas.height = PHOTO_SIZE;
+    const context = canvas.getContext("2d");
+    if (!context) throw new InputError("Photo processing is unavailable in this browser.");
+    const crop = Math.min(image.naturalWidth, image.naturalHeight);
+    // Re-encoding stores only the thumbnail, not the original photo or EXIF metadata.
+    context.drawImage(
+      image, (image.naturalWidth - crop) / 2, (image.naturalHeight - crop) / 2,
+      crop, crop, 0, 0, PHOTO_SIZE, PHOTO_SIZE
+    );
+    const data = canvas.toDataURL("image/jpeg", 0.72);
+    if (data.length > MAX_PHOTO_CHARS) throw new InputError("Photo is too detailed. Try a simpler or smaller picture.");
+    validatedPhotos({ "player-1": data });
+    return data;
+  } finally {
+    image.onload = null;
+    image.onerror = null;
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function readPlayerPhoto(event) {
+  const file = event.target.files[0];
+  if (!file || !photoEditor) return;
+  const version = ++photoReadVersion;
+  const editor = photoEditor;
+  editor.busy = true;
+  editor.pending = null;
+  $("save-player-photo").disabled = true;
+  $("photo-error").textContent = "Preparing a small photo on this device...";
+  try {
+    const data = await resizePlayerPhoto(file);
+    if (version !== photoReadVersion || photoEditor !== editor) return;
+    editor.pending = data;
+    const preview = element("span", "", "player-avatar");
+    const image = new Image();
+    image.src = data;
+    image.alt = "Preview of the selected player photo";
+    preview.append(image);
+    $("photo-preview").replaceChildren(preview);
+    $("photo-error").textContent = "Preview ready. Use Photo to save, or take another.";
+    $("save-player-photo").disabled = false;
+  } catch (error) {
+    if (version !== photoReadVersion || photoEditor !== editor) return;
+    if (!(error instanceof InputError) && !(error instanceof DOMException)) throw error;
+    $("photo-error").textContent = error.message;
+  } finally {
+    if (photoEditor === editor && version === photoReadVersion) editor.busy = false;
+    event.target.value = "";
+  }
+}
+
+function storePlayerPhoto(data) {
+  if (!photoEditor || photoEditor.sessionId !== currentSessionId ||
+      !players.some((player) => player.id === photoEditor.id)) {
+    throw new InputError("The selected player or session changed. Reopen the photo editor.");
+  }
+  if (!storageWritable) {
+    throw new InputError("Browser saving is paused. Resolve the storage warning before saving photos.");
+  }
+  const nextPhotos = { ...playerPhotos };
+  if (data === null) delete nextPhotos[photoEditor.id];
+  else nextPhotos[photoEditor.id] = data;
+  validatedPhotos(nextPhotos);
+  const candidate = copy(sessionLibrary);
+  const state = captureSessionState();
+  state.photos = nextPhotos;
+  const snapshot = { id: currentSessionId, updatedAt: new Date().toISOString(), state };
+  const index = candidate.sessions.findIndex((session) => session.id === currentSessionId);
+  if (index === -1) candidate.sessions.push(snapshot);
+  else candidate.sessions[index] = snapshot;
+  candidate.activeId = currentSessionId;
+  const serialized = JSON.stringify(candidate);
+  try {
+    if (localStorage.getItem(STORAGE_KEY) !== lastStoredText) {
+      storageWritable = false;
+      showStorageStatus("Another tab changed sessions. Export your work and reload before changing photos.", true);
+      throw new InputError("Saved data changed in another tab. Photo was not changed.");
+    }
+    localStorage.setItem(STORAGE_KEY, serialized);
+  } catch (error) {
+    if (error instanceof InputError) throw error;
+    if (!(error instanceof DOMException)) throw error;
+    throw new InputError(`Photo could not be saved (${error.name}). Your previous photo is unchanged. Export a backup and free browser storage if needed.`);
+  }
+  playerPhotos = nextPhotos;
+  sessionLibrary = candidate;
+  lastStoredText = serialized;
+  renderSetup();
+  closePlayerPhoto();
+  showStorageStatus(data === null
+    ? "Photo removed from this session. Older exported backups still contain their original pictures."
+    : "Player photo saved on this device. Backups include player photos.");
+}
+
+$("take-player-photo").addEventListener("click", () => {
+  $("camera-photo-file").value = "";
+  $("camera-photo-file").click();
+});
+$("choose-player-photo").addEventListener("click", () => {
+  $("library-photo-file").value = "";
+  $("library-photo-file").click();
+});
+$("camera-photo-file").addEventListener("change", readPlayerPhoto);
+$("library-photo-file").addEventListener("change", readPlayerPhoto);
+$("cancel-player-photo").addEventListener("click", closePlayerPhoto);
+$("player-photo-dialog").addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closePlayerPhoto();
+});
+$("save-player-photo").addEventListener("click", () => {
+  runSafely("photo-error", () => {
+    if (!photoEditor?.pending || photoEditor.busy) throw new InputError("Choose a photo and wait for the preview.");
+    storePlayerPhoto(photoEditor.pending);
+  });
+});
+$("remove-player-photo").addEventListener("click", () => {
+  runSafely("photo-error", () => storePlayerPhoto(null));
+});
+
 const STORAGE_KEY = "marriage-table.sessions.v1";
 
 const RESUME_SCREENS = [
@@ -1424,6 +1697,7 @@ function restoreForm(values) {
 function captureSessionState() {
   return copy({
     players,
+    photos: playerPhotos,
     savedRounds,
     nextPlayerId,
     selectedRoundNumber,
@@ -1593,6 +1867,7 @@ function deleteSession(id, snapshot) {
     // Prevent autosave/page-hide events from resurrecting the deleted session.
     currentSessionId = null;
     players.splice(0);
+    playerPhotos = {};
     savedRounds.splice(0);
     nextPlayerId = 1;
     selectedRoundNumber = null;
@@ -1858,6 +2133,14 @@ function validateSessionState(state) {
   });
   // Rebuild in order so persisted or edited foul bonuses are applied exactly once.
   state.savedRounds = recalculateHistory(state.savedRounds);
+  state.photos = validatedPhotos(state.photos);
+  const knownPhotoIds = new Set([...usedIds, ...state.savedRounds.flatMap(
+    (round) => round.results.map((result) => result.id)
+  )]);
+  requireValid(
+    Object.keys(state.photos).every((id) => knownPhotoIds.has(id)),
+    "photo belongs to an unknown player."
+  );
 
   requireValid(
     Number.isSafeInteger(state.nextPlayerId) &&
@@ -2038,6 +2321,7 @@ function continueSession(id) {
   try {
     currentSessionId = session.id;
     players.splice(0, players.length, ...state.players);
+    playerPhotos = state.photos;
     savedRounds.splice(0, savedRounds.length, ...state.savedRounds);
 
     nextPlayerId = state.nextPlayerId;
@@ -2085,6 +2369,7 @@ function startNewSession() {
   try {
     currentSessionId = id;
     players.splice(0);
+    playerPhotos = {};
     savedRounds.splice(0);
 
     nextPlayerId = 1;
@@ -2309,6 +2594,7 @@ function importedState(value) {
   // Copy only known fields; supplied result totals and extra properties are ignored.
   return validateSessionState({
     players: setup,
+    photos: validatedPhotos(value.photos),
     savedRounds: rounds,
     nextPlayerId: value.nextPlayerId,
     selectedRoundNumber: value.selectedRoundNumber,
